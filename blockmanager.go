@@ -2426,7 +2426,7 @@ func (b *blockManager) checkHeaderSanity(blockHeader *wire.BlockHeader,
 	stubBlock := btcutil.NewBlock(&wire.MsgBlock{
 		Header: *blockHeader,
 	})
-	err = blockchain.CheckProofOfWork(stubBlock,
+
 	isMonacoin := func(magic wire.BitcoinNet) bool {
 		return monawire.BitcoinNet(magic) == monawire.MainNet || 
 		   monawire.BitcoinNet(magic) == monawire.TestNet4 ||
