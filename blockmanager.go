@@ -20,6 +20,9 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/gcs"
 	"github.com/btcsuite/btcutil/gcs/builder"
+	monablockchain "github.com/monasuite/monad/blockchain"
+	monawire "github.com/monasuite/monad/wire"
+	monautil "github.com/monasuite/monautil"
 	"github.com/lightninglabs/neutrino/blockntfns"
 	"github.com/lightninglabs/neutrino/headerfs"
 	"github.com/lightninglabs/neutrino/headerlist"
@@ -2424,7 +2427,22 @@ func (b *blockManager) checkHeaderSanity(blockHeader *wire.BlockHeader,
 		Header: *blockHeader,
 	})
 	err = blockchain.CheckProofOfWork(stubBlock,
-		blockchain.CompactToBig(diff))
+	isMonacoin := func(magic wire.BitcoinNet) bool {
+		return monawire.BitcoinNet(magic) == monawire.MainNet || 
+		   monawire.BitcoinNet(magic) == monawire.TestNet4 ||
+		   monawire.BitcoinNet(magic) == monawire.SimNet
+	}
+	if isMonacoin(b.server.chainParams.Net) {
+		stubBytes, err := stubBlock.Bytes()
+		if err != nil { return err }
+		monaBlock, err := monautil.NewBlockFromBytes(stubBytes)
+		if err != nil { return err }
+		bigDiff := blockchain.CompactToBig(b.server.chainParams.PowLimitBits)
+		err = monablockchain.CheckProofOfWork(monaBlock, bigDiff)
+	} else {
+		err = blockchain.CheckProofOfWork(stubBlock,
+			blockchain.CompactToBig(diff))
+	}
 	if err != nil {
 		return err
 	}

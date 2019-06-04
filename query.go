@@ -14,6 +14,9 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/gcs"
 	"github.com/btcsuite/btcutil/gcs/builder"
+	monablockchain "github.com/monasuite/monad/blockchain"
+	monautil "github.com/monasuite/monautil"
+	monawire "github.com/monasuite/monad/wire"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightninglabs/neutrino/cache"
 	"github.com/lightninglabs/neutrino/filterdb"
@@ -1212,15 +1215,45 @@ func (s *ChainService) GetBlock(blockHash chainhash.Hash,
 				// If this claims our block but doesn't pass
 				// the sanity check, the peer is trying to
 				// bamboozle us. Disconnect it.
-				if err := blockchain.CheckBlockSanity(
-					block,
-					// We don't need to check PoW because
-					// by the time we get here, it's been
-					// checked during header
-					// synchronization
-					s.chainParams.PowLimit,
-					s.timeSource,
-				); err != nil {
+				// if monacoin network, do monacoin specific checks
+				var err error
+				isMonacoin := func(magic wire.BitcoinNet) bool {
+					return monawire.BitcoinNet(magic) == monawire.MainNet || 
+					   monawire.BitcoinNet(magic) == monawire.TestNet4 ||
+					   monawire.BitcoinNet(magic) == monawire.SimNet
+				}
+				if isMonacoin(s.chainParams.Net) {
+					stubBytes, err := block.Bytes()
+					if err != nil {
+						log.Warnf("couldn't : %v", err)
+					}
+					monaBlock, err := monautil.NewBlockFromBytes(stubBytes)
+					if err != nil {
+						log.Warnf("couldn't : %v", err)
+					}
+
+					err = monablockchain.CheckBlockSanity(
+						monaBlock,
+						// We don't need to check PoW because
+						// by the time we get here, it's been
+						// checked during header
+						// synchronization
+						s.chainParams.PowLimit,
+						s.timeSource,
+					)
+				} else {
+					err = blockchain.CheckBlockSanity(
+						block,
+						// We don't need to check PoW because
+						// by the time we get here, it's been
+						// checked during header
+						// synchronization
+						s.chainParams.PowLimit,
+						s.timeSource,
+					)
+				}
+
+				if err != nil {
 					log.Warnf("Invalid block for %s "+
 						"received from %s -- "+
 						"disconnecting peer", blockHash,
