@@ -1,4 +1,4 @@
-module github.com/lightninglabs/neutrino
+module github.com/monasuite/neutrino
 
 require (
 	github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32

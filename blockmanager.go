@@ -23,9 +23,9 @@ import (
 	monablockchain "github.com/monasuite/monad/blockchain"
 	monawire "github.com/monasuite/monad/wire"
 	monautil "github.com/monasuite/monautil"
-	"github.com/lightninglabs/neutrino/blockntfns"
-	"github.com/lightninglabs/neutrino/headerfs"
-	"github.com/lightninglabs/neutrino/headerlist"
+	"github.com/monasuite/neutrino/blockntfns"
+	"github.com/monasuite/neutrino/headerfs"
+	"github.com/monasuite/neutrino/headerlist"
 )
 
 const (

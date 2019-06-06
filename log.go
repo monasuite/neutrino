@@ -6,8 +6,8 @@ import (
 	"github.com/btcsuite/btcd/peer"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btclog"
-	"github.com/lightninglabs/neutrino/blockntfns"
-	"github.com/lightninglabs/neutrino/pushtx"
+	"github.com/monasuite/neutrino/blockntfns"
+	"github.com/monasuite/neutrino/pushtx"
 )
 
 // log is a logger that is initialized with no output filters.  This

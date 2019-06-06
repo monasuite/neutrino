@@ -8,9 +8,9 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/gcs"
-	"github.com/lightninglabs/neutrino/cache"
-	"github.com/lightninglabs/neutrino/cache/lru"
-	"github.com/lightninglabs/neutrino/filterdb"
+	"github.com/monasuite/neutrino/cache"
+	"github.com/monasuite/neutrino/cache/lru"
+	"github.com/monasuite/neutrino/filterdb"
 )
 
 // TestBlockFilterCaches tests that we can put and retrieve elements from all

@@ -22,11 +22,11 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcwallet/waddrmgr"
 	"github.com/btcsuite/btcwallet/walletdb"
-	"github.com/lightninglabs/neutrino/blockntfns"
-	"github.com/lightninglabs/neutrino/cache/lru"
-	"github.com/lightninglabs/neutrino/filterdb"
-	"github.com/lightninglabs/neutrino/headerfs"
-	"github.com/lightninglabs/neutrino/pushtx"
+	"github.com/monasuite/neutrino/blockntfns"
+	"github.com/monasuite/neutrino/cache/lru"
+	"github.com/monasuite/neutrino/filterdb"
+	"github.com/monasuite/neutrino/headerfs"
+	"github.com/monasuite/neutrino/pushtx"
 )
 
 // These are exported variables so they can be changed by users.

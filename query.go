@@ -18,9 +18,9 @@ import (
 	monautil "github.com/monasuite/monautil"
 	monawire "github.com/monasuite/monad/wire"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/lightninglabs/neutrino/cache"
-	"github.com/lightninglabs/neutrino/filterdb"
-	"github.com/lightninglabs/neutrino/pushtx"
+	"github.com/monasuite/neutrino/cache"
+	"github.com/monasuite/neutrino/filterdb"
+	"github.com/monasuite/neutrino/pushtx"
 )
 
 var (

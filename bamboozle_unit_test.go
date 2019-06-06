@@ -12,7 +12,7 @@ import (
 	"github.com/btcsuite/btcutil/gcs"
 	"github.com/btcsuite/btcutil/gcs/builder"
 	"github.com/btcsuite/btcwallet/walletdb"
-	"github.com/lightninglabs/neutrino/headerfs"
+	"github.com/monasuite/neutrino/headerfs"
 )
 
 func decodeHashNoError(str string) *chainhash.Hash {

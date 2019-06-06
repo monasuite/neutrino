@@ -13,8 +13,8 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil/gcs/builder"
 	"github.com/btcsuite/btcwallet/walletdb"
-	"github.com/lightninglabs/neutrino/blockntfns"
-	"github.com/lightninglabs/neutrino/headerfs"
+	"github.com/monasuite/neutrino/blockntfns"
+	"github.com/monasuite/neutrino/headerfs"
 )
 
 // maxHeight is the height we will generate filter headers up to.
