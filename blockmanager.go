@@ -2418,6 +2418,14 @@ func (b *blockManager) handleHeadersMsg(hmsg *headersMsg) {
 // checkHeaderSanity checks the PoW, and timestamp of a block header.
 func (b *blockManager) checkHeaderSanity(blockHeader *wire.BlockHeader,
 	maxTimestamp time.Time, reorgAttempt bool) error {
+	// monacoin is ok?
+	// This time is over 450025blocks(mainnet) and 55 blocks(testnet)
+	// 2017/06/08 12:37:00
+	lyratime := time.Unix(1499485020, 0)
+	if blockHeader.Timestamp.Before(lyratime) {
+		return nil
+	}
+
 	diff, err := b.calcNextRequiredDifficulty(
 		blockHeader.Timestamp, reorgAttempt)
 	if err != nil {
@@ -2428,15 +2436,19 @@ func (b *blockManager) checkHeaderSanity(blockHeader *wire.BlockHeader,
 	})
 
 	isMonacoin := func(magic wire.BitcoinNet) bool {
-		return monawire.BitcoinNet(magic) == monawire.MainNet || 
-		   monawire.BitcoinNet(magic) == monawire.TestNet4 ||
-		   monawire.BitcoinNet(magic) == monawire.SimNet
+		return monawire.BitcoinNet(magic) == monawire.MainNet ||
+			monawire.BitcoinNet(magic) == monawire.TestNet4 ||
+			monawire.BitcoinNet(magic) == monawire.SimNet
 	}
 	if isMonacoin(b.server.chainParams.Net) {
 		stubBytes, err := stubBlock.Bytes()
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		monaBlock, err := monautil.NewBlockFromBytes(stubBytes)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		bigDiff := blockchain.CompactToBig(b.server.chainParams.PowLimitBits)
 		err = monablockchain.CheckProofOfWork(monaBlock, bigDiff)
 	} else {

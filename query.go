@@ -14,10 +14,10 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/gcs"
 	"github.com/btcsuite/btcutil/gcs/builder"
-	monablockchain "github.com/monasuite/monad/blockchain"
-	monautil "github.com/monasuite/monautil"
-	monawire "github.com/monasuite/monad/wire"
 	"github.com/davecgh/go-spew/spew"
+	monablockchain "github.com/monasuite/monad/blockchain"
+	monawire "github.com/monasuite/monad/wire"
+	monautil "github.com/monasuite/monautil"
 	"github.com/monasuite/neutrino/cache"
 	"github.com/monasuite/neutrino/filterdb"
 	"github.com/monasuite/neutrino/pushtx"
@@ -1218,9 +1218,9 @@ func (s *ChainService) GetBlock(blockHash chainhash.Hash,
 				// if monacoin network, do monacoin specific checks
 				var err error
 				isMonacoin := func(magic wire.BitcoinNet) bool {
-					return monawire.BitcoinNet(magic) == monawire.MainNet || 
-					   monawire.BitcoinNet(magic) == monawire.TestNet4 ||
-					   monawire.BitcoinNet(magic) == monawire.SimNet
+					return monawire.BitcoinNet(magic) == monawire.MainNet ||
+						monawire.BitcoinNet(magic) == monawire.TestNet4 ||
+						monawire.BitcoinNet(magic) == monawire.SimNet
 				}
 				if isMonacoin(s.chainParams.Net) {
 					stubBytes, err := block.Bytes()
