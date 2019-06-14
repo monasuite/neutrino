@@ -19,7 +19,7 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/gcs"
 	"github.com/btcsuite/btcutil/gcs/builder"
-	"github.com/btcsuite/btcwallet/waddrmgr"
+	"github.com/monaarchives/btcwallet/waddrmgr"
 	"github.com/monasuite/neutrino/blockntfns"
 	"github.com/monasuite/neutrino/headerfs"
 )

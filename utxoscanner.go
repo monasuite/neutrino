@@ -8,7 +8,7 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcwallet/waddrmgr"
+	"github.com/monaarchives/btcwallet/waddrmgr"
 )
 
 // getUtxoResult is a simple pair type holding a spend report and error.

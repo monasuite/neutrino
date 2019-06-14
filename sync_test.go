@@ -25,10 +25,10 @@ import (
 	"github.com/btcsuite/btclog"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/gcs/builder"
-	"github.com/btcsuite/btcwallet/waddrmgr"
-	"github.com/btcsuite/btcwallet/wallet/txauthor"
-	"github.com/btcsuite/btcwallet/walletdb"
-	_ "github.com/btcsuite/btcwallet/walletdb/bdb"
+	"github.com/monaarchives/btcwallet/waddrmgr"
+	"github.com/monaarchives/btcwallet/wallet/txauthor"
+	"github.com/monaarchives/btcwallet/walletdb"
+	_ "github.com/monaarchives/btcwallet/walletdb/bdb"
 	"github.com/monasuite/neutrino"
 )
 
