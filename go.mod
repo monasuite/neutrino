@@ -6,7 +6,9 @@ require (
 	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
 	github.com/davecgh/go-spew v1.1.1
 	github.com/lightningnetwork/lnd/queue v1.0.1
-	github.com/monaarchives/btcwallet v0.0.0-20190714065058-1e4f031ea06d
+	github.com/monaarchives/btcwallet/wallet/txauthor v1.0.0 // indirect
+	github.com/monaarchives/btcwallet/walletdb v1.1.0
+	github.com/monaarchives/btcwallet/wtxmgr v1.0.0
 	github.com/monasuite/monad v0.0.0-20190606163121-f0d2a15b1f44
 	github.com/monasuite/monautil v0.0.0-20190606162653-90b266792864
 )
