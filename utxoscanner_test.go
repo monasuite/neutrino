@@ -11,7 +11,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/gcs"
-	"github.com/lightninglabs/neutrino/headerfs"
+	"github.com/monasuite/neutrino/headerfs"
 )
 
 type MockChainClient struct {

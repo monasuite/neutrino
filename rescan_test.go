@@ -17,8 +17,8 @@ import (
 	"github.com/btcsuite/btcutil/gcs"
 	"github.com/btcsuite/btcutil/gcs/builder"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/lightninglabs/neutrino/blockntfns"
-	"github.com/lightninglabs/neutrino/headerfs"
+	"github.com/monasuite/neutrino/blockntfns"
+	"github.com/monasuite/neutrino/headerfs"
 )
 
 // mockChainSource is a mock implementation of the ChainSource interface that
