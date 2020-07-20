@@ -9,8 +9,8 @@ require (
 	github.com/monaarchives/btcwallet/wallet/txauthor v1.0.0
 	github.com/monaarchives/btcwallet/walletdb v1.2.0
 	github.com/monaarchives/btcwallet/wtxmgr v1.0.0
-	github.com/monasuite/monad v0.21.1-beta
-	github.com/monasuite/monautil v0.0.0-20190606162653-90b266792864
+	github.com/monasuite/monad v0.22.1-beta
+	github.com/monasuite/monautil v1.1.1
 )
 
 go 1.13
