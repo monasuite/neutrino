@@ -15,8 +15,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/monaarchives/btcwallet/walletdb"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/monaarchives/btcwallet/walletdb"
 )
 
 func createTestBlockHeaderStore() (func(), walletdb.DB, string,

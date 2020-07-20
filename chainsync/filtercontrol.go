@@ -18,10 +18,10 @@ var ErrCheckpointMismatch = fmt.Errorf("checkpoint doesn't match")
 var filterHeaderCheckpoints = map[wire.BitcoinNet]map[uint32]*chainhash.Hash{
 	// Mainnet filter header checkpoints.
 	// monacoin is OK? TODO
-	chaincfg.MainNetParams.Net: map[uint32]*chainhash.Hash{},
+	chaincfg.MainNetParams.Net: {},
 
 	// Testnet filter header checkpoints.
-	chaincfg.TestNet3Params.Net: map[uint32]*chainhash.Hash{},
+	chaincfg.TestNet3Params.Net: {},
 }
 
 // ControlCFHeader controls the given filter header against our list of

@@ -26,7 +26,7 @@ var (
 	// query.
 	QueryTimeout = time.Second * 10
 
-	// QueryBatchTimout is the total time we'll wait for a batch fetch
+	// QueryBatchTimeout is the total time we'll wait for a batch fetch
 	// query to complete.
 	// TODO(halseth): instead use timeout since last received response?
 	QueryBatchTimeout = time.Second * 30
@@ -539,7 +539,7 @@ checkResponses:
 func (s *ChainService) getFilterFromCache(blockHash *chainhash.Hash,
 	filterType filterdb.FilterType) (*gcs.Filter, error) {
 
-	cacheKey := cache.FilterCacheKey{*blockHash, filterType}
+	cacheKey := cache.FilterCacheKey{BlockHash: *blockHash, FilterType: filterType}
 
 	filterValue, err := s.FilterCache.Get(cacheKey)
 	if err != nil {
@@ -553,7 +553,7 @@ func (s *ChainService) getFilterFromCache(blockHash *chainhash.Hash,
 func (s *ChainService) putFilterToCache(blockHash *chainhash.Hash,
 	filterType filterdb.FilterType, filter *gcs.Filter) (bool, error) {
 
-	cacheKey := cache.FilterCacheKey{*blockHash, filterType}
+	cacheKey := cache.FilterCacheKey{BlockHash: *blockHash, FilterType: filterType}
 	return s.FilterCache.Put(cacheKey, &cache.CacheableFilter{Filter: filter})
 }
 
@@ -1085,7 +1085,7 @@ func (s *ChainService) GetBlock(blockHash chainhash.Hash,
 	}
 
 	// Add block to the cache before returning it.
-	_, err = s.BlockCache.Put(*inv, &cache.CacheableBlock{foundBlock})
+	_, err = s.BlockCache.Put(*inv, &cache.CacheableBlock{Block: foundBlock})
 	if err != nil {
 		log.Warnf("couldn't write block to cache: %v", err)
 	}
