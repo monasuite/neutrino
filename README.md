@@ -1,7 +1,7 @@
 # Neutrino: Privacy-Preserving Bitcoin Light Client
 
 [![Build Status](https://travis-ci.org/monasuite/neutrino.svg?branch=master)](https://travis-ci.org/monasuite/neutrino)
-[![Godoc](https://godoc.org/github.com/monasuite/neutrino?status.svg)](https://godoc.org/github.com/monasuite/neutrino)
+[![Godoc](https://godoc.org/github.com/monasuite/neutrino?status.svg)](https://pkg.go.dev/github.com/monasuite/neutrino)
 [![Coverage Status](https://coveralls.io/repos/github/monasuite/neutrino/badge.svg?branch=master)](https://coveralls.io/github/monasuite/neutrino?branch=master)
 
 Neutrino is an **experimental** Bitcoin light client written in Go and designed with mobile Lightning Network clients in mind. It uses a [new proposal](https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2017-June/014474.html) for compact block filters to minimize bandwidth and storage use on the client side, while attempting to preserve privacy and minimize processor load on full nodes serving light clients.
