@@ -1014,7 +1014,16 @@ func (s *ChainService) GetBlock(blockHash chainhash.Hash,
 						s.chainParams.PowLimit,
 						s.timeSource,
 					)
-				} else {
+					if err != nil {
+						log.Warnf("Invalid block for %s "+
+							"received from %s -- "+
+							"disconnecting peer", blockHash,
+							sp.Addr())
+						sp.Disconnect()
+						return
+					}
+				}
+				if !isMonacoin(s.chainParams.Net) {
 					err = blockchain.CheckBlockSanity(
 						block,
 						// We don't need to check PoW because
@@ -1024,15 +1033,14 @@ func (s *ChainService) GetBlock(blockHash chainhash.Hash,
 						s.chainParams.PowLimit,
 						s.timeSource,
 					)
-				}
-
-				if err != nil {
-					log.Warnf("Invalid block for %s "+
-						"received from %s -- "+
-						"disconnecting peer", blockHash,
-						sp.Addr())
-					sp.Disconnect()
-					return
+					if err != nil {
+						log.Warnf("Invalid block for %s "+
+							"received from %s -- "+
+							"disconnecting peer", blockHash,
+							sp.Addr())
+						sp.Disconnect()
+						return
+					}
 				}
 
 				// TODO(roasbeef): modify CheckBlockSanity to
