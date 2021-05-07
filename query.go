@@ -1013,8 +1013,7 @@ func (s *ChainService) GetBlock(blockHash chainhash.Hash,
 						// synchronization
 						s.chainParams.PowLimit,
 						s.timeSource,
-					)
-					if err != nil {
+					); if err != nil {
 						log.Warnf("Invalid block for %s "+
 							"received from %s -- "+
 							"disconnecting peer", blockHash,
@@ -1032,8 +1031,7 @@ func (s *ChainService) GetBlock(blockHash chainhash.Hash,
 						// synchronization
 						s.chainParams.PowLimit,
 						s.timeSource,
-					)
-					if err != nil {
+					); if err != nil {
 						log.Warnf("Invalid block for %s "+
 							"received from %s -- "+
 							"disconnecting peer", blockHash,
