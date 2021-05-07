@@ -11,6 +11,7 @@ require (
 	github.com/monaarchives/btcwallet/wtxmgr v1.2.0
 	github.com/monasuite/monad v0.22.1-beta.0.20200923041908-5682eaeb0bcc
 	github.com/monasuite/monautil v1.1.2
+	github.com/stretchr/testify v1.5.1 // indirect
 )
 
 go 1.13

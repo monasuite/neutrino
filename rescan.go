@@ -354,7 +354,7 @@ func rescan(chain ChainSource, options ...RescanOption) error {
 	// If we don't have a quit channel, and the end height is still
 	// unspecified, then we'll exit out here.
 	if ro.quit == nil && ro.endBlock.Height == 0 {
-		return fmt.Errorf("Rescan request must specify a quit channel" +
+		return fmt.Errorf("rescan request must specify a quit channel" +
 			" or valid end block")
 	}
 
@@ -560,8 +560,8 @@ func rescan(chain ChainSource, options ...RescanOption) error {
 					newStamp.Height, &header, nil,
 				)
 			}
-			if ro.ntfn.OnBlockConnected != nil {
-				ro.ntfn.OnBlockConnected(
+			if ro.ntfn.OnBlockConnected != nil { // nolint:staticcheck
+				ro.ntfn.OnBlockConnected( // nolint:staticcheck
 					&newStamp.Hash, newStamp.Height,
 					header.Timestamp,
 				)
@@ -606,7 +606,7 @@ func rescan(chain ChainSource, options ...RescanOption) error {
 
 	// handleBlockDisconnected is a helper closure that handles a new block
 	// disconnected notification.
-	handleBlockDisconnected := func(ntfn *blockntfns.Disconnected) error {
+	handleBlockDisconnected := func(ntfn *blockntfns.Disconnected) error { // nolint:unparam
 		blockDisconnected := ntfn.Header()
 		log.Debugf("Rescan got disconnected block %d (%s)",
 			ntfn.Height(), blockDisconnected.BlockHash())
@@ -624,8 +624,8 @@ func rescan(chain ChainSource, options ...RescanOption) error {
 				curStamp.Height, &curHeader,
 			)
 		}
-		if ro.ntfn.OnBlockDisconnected != nil {
-			ro.ntfn.OnBlockDisconnected(
+		if ro.ntfn.OnBlockDisconnected != nil { // nolint:staticcheck
+			ro.ntfn.OnBlockDisconnected( // nolint:staticcheck
 				&curStamp.Hash, curStamp.Height,
 				curHeader.Timestamp,
 			)
@@ -910,14 +910,16 @@ func notifyBlock(chain ChainSource, ro *rescanOptions,
 		// If we have a non-empty watch list, then we need to see if it
 		// matches the rescan's filters, so we get the basic filter
 		// from the DB or network.
-		matched, err := blockFilterMatches(chain, ro, &curStamp.Hash)
+		matched, filter, err := blockFilterMatches(
+			chain, ro, &curStamp.Hash,
+		)
 		if err != nil {
 			return err
 		}
 
 		if matched {
 			relevantTxs, err = extractBlockMatches(
-				chain, ro, &curStamp,
+				chain, ro, &curStamp, filter,
 			)
 			if err != nil {
 				return err
@@ -930,8 +932,8 @@ func notifyBlock(chain ChainSource, ro *rescanOptions,
 			relevantTxs)
 	}
 
-	if ro.ntfn.OnBlockConnected != nil {
-		ro.ntfn.OnBlockConnected(&curStamp.Hash,
+	if ro.ntfn.OnBlockConnected != nil { // nolint:staticcheck
+		ro.ntfn.OnBlockConnected(&curStamp.Hash, // nolint:staticcheck
 			curStamp.Height, curHeader.Timestamp)
 	}
 
@@ -941,7 +943,8 @@ func notifyBlock(chain ChainSource, ro *rescanOptions,
 // extractBlockMatches fetches the target block from the network, and filters
 // out any relevant transactions found within the block.
 func extractBlockMatches(chain ChainSource, ro *rescanOptions,
-	curStamp *headerfs.BlockStamp) ([]*btcutil.Tx, error) {
+	curStamp *headerfs.BlockStamp, filter *gcs.Filter) ([]*btcutil.Tx,
+	error) {
 
 	// We've matched. Now we actually get the block and cycle through the
 	// transactions to see which ones are relevant.
@@ -950,8 +953,19 @@ func extractBlockMatches(chain ChainSource, ro *rescanOptions,
 		return nil, err
 	}
 	if block == nil {
-		return nil, fmt.Errorf("Couldn't get block %d (%s) from "+
+		return nil, fmt.Errorf("couldn't get block %d (%s) from "+
 			"network", curStamp.Height, curStamp.Hash)
+	}
+
+	// Before we go through the transactions, let's make sure the filter we
+	// got from our peer is valid and includes all spent previous output
+	// scripts. If there's a problem, the error returned here will be
+	// interpreted by the block manager to disconnect/ban said peer.
+	if _, err := VerifyBasicBlockFilter(filter, block); err != nil {
+		return nil, fmt.Errorf("error verifying filter against "+
+			"downloaded block %d (%s), possibly got invalid "+
+			"filter from peer: %v", curStamp.Height, curStamp.Hash,
+			err)
 	}
 
 	blockHeader := block.MsgBlock().Header
@@ -970,8 +984,8 @@ func extractBlockMatches(chain ChainSource, ro *rescanOptions,
 
 		if ro.spendsWatchedInput(tx) {
 			relevant = true
-			if ro.ntfn.OnRedeemingTx != nil {
-				ro.ntfn.OnRedeemingTx(tx, &txDetails)
+			if ro.ntfn.OnRedeemingTx != nil { // nolint:staticcheck
+				ro.ntfn.OnRedeemingTx(tx, &txDetails) // nolint:staticcheck
 			}
 		}
 
@@ -986,8 +1000,8 @@ func extractBlockMatches(chain ChainSource, ro *rescanOptions,
 
 		if pays {
 			relevant = true
-			if ro.ntfn.OnRecvTx != nil {
-				ro.ntfn.OnRecvTx(tx, &txDetails)
+			if ro.ntfn.OnRecvTx != nil { // nolint:staticcheck
+				ro.ntfn.OnRecvTx(tx, &txDetails) // nolint:staticcheck
 			}
 		}
 
@@ -1022,7 +1036,7 @@ func notifyBlockWithFilter(chain ChainSource, ro *rescanOptions,
 
 		if matched {
 			relevantTxs, err = extractBlockMatches(
-				chain, ro, curStamp,
+				chain, ro, curStamp, filter,
 			)
 			if err != nil {
 				return err
@@ -1035,8 +1049,8 @@ func notifyBlockWithFilter(chain ChainSource, ro *rescanOptions,
 			relevantTxs)
 	}
 
-	if ro.ntfn.OnBlockConnected != nil {
-		ro.ntfn.OnBlockConnected(&curStamp.Hash,
+	if ro.ntfn.OnBlockConnected != nil { // nolint:staticcheck
+		ro.ntfn.OnBlockConnected(&curStamp.Hash, // nolint:staticcheck
 			curStamp.Height, curHeader.Timestamp)
 	}
 
@@ -1067,7 +1081,7 @@ func matchBlockFilter(ro *rescanOptions, filter *gcs.Filter,
 // items. If this returns false, it means the block is certainly not interesting
 // to us.
 func blockFilterMatches(chain ChainSource, ro *rescanOptions,
-	blockHash *chainhash.Hash) (bool, error) {
+	blockHash *chainhash.Hash) (bool, *gcs.Filter, error) {
 
 	// TODO(roasbeef): need to ENSURE always get filter
 
@@ -1081,18 +1095,19 @@ func blockFilterMatches(chain ChainSource, ro *rescanOptions,
 	if err != nil {
 		if err == headerfs.ErrHashNotFound {
 			// Block has been reorged out from under us.
-			return false, nil
+			return false, nil, nil
 		}
-		return false, err
+		return false, nil, err
 	}
 
 	// If we found the filter, then we'll check the items in the watch list
 	// against it.
 	if filter.N() != 0 {
-		return matchBlockFilter(ro, filter, blockHash)
+		matched, err := matchBlockFilter(ro, filter, blockHash)
+		return matched, filter, err
 	}
 
-	return false, nil
+	return false, nil, nil
 }
 
 // updateFilter atomically updates the filter and rewinds to the specified
@@ -1133,9 +1148,9 @@ func (ro *rescanOptions) updateFilter(chain ChainSource, update *updateOptions,
 	// If we need to rewind, then we'll walk backwards in the chain until
 	// we arrive at the block _just_ before the rewind.
 	for curStamp.Height > int32(update.rewind) {
-		if ro.ntfn.OnBlockDisconnected != nil &&
+		if ro.ntfn.OnBlockDisconnected != nil && // nolint:staticcheck
 			!update.disableDisconnectedNtfns {
-			ro.ntfn.OnBlockDisconnected(&curStamp.Hash,
+			ro.ntfn.OnBlockDisconnected(&curStamp.Hash, // nolint:staticcheck
 				curStamp.Height, curHeader.Timestamp)
 		}
 		if ro.ntfn.OnFilteredBlockDisconnected != nil &&
@@ -1245,8 +1260,8 @@ txOutLoop:
 // client with updateable filters. It's meant to be close to a drop-in
 // replacement for the btcd rescan and notification functionality used in
 // wallets. It only contains information about whether a goroutine is running.
-type Rescan struct {
-	started uint32
+type Rescan struct { // nolint:maligned
+	started uint32 // To be used atomically.
 
 	running    chan struct{}
 	updateChan chan *updateOptions
@@ -1286,7 +1301,7 @@ func (r *Rescan) Start() <-chan error {
 	errChan := make(chan error, 1)
 
 	if !atomic.CompareAndSwapUint32(&r.started, 0, 1) {
-		errChan <- fmt.Errorf("Rescan already started")
+		errChan <- fmt.Errorf("rescan already started")
 		return errChan
 	}
 
@@ -1359,7 +1374,6 @@ func DisableDisconnectedNtfns(disabled bool) UpdateOption {
 
 // Update sends an update to a long-running rescan/notification goroutine.
 func (r *Rescan) Update(options ...UpdateOption) error {
-
 	ro := defaultRescanOptions()
 	for _, option := range r.options {
 		option(ro)
@@ -1419,6 +1433,25 @@ type SpendReport struct {
 	// NOTE: This field will only be populated if the target is still
 	// unspent.
 	Output *wire.TxOut
+
+	// BlockHash is the block hash of the block that includes the unspent
+	// output.
+	//
+	// NOTE: This field will only be populated if the target is still
+	// unspent.
+	BlockHash *chainhash.Hash
+
+	// BlockHeight is the height of the block that includes the unspent output.
+	//
+	// NOTE: This field will only be populated if the target is still
+	// unspent.
+	BlockHeight uint32
+
+	// BlockIndex is the index of the output's transaction in its block.
+	//
+	// NOTE: This field will only be populated if the target is still
+	// unspent.
+	BlockIndex uint32
 }
 
 // GetUtxo gets the appropriate TxOut or errors if it's spent. The option
@@ -1427,7 +1460,7 @@ type SpendReport struct {
 // used to give a hint of which transaction in the block matches it (coinbase
 // is 0, first normal transaction is 1, etc.).
 //
-// TODO(roasbeef): WTB utxo-commitments
+// TODO(roasbeef): WTB utxo-commitments.
 func (s *ChainService) GetUtxo(options ...RescanOption) (*SpendReport, error) {
 	// Before we start we'll fetch the set of default options, and apply
 	// any user specified options in a functional manner.

@@ -219,7 +219,7 @@ func (s *secSource) add(privKey *btcec.PrivateKey) (btcutil.Address, error) {
 	return addr, nil
 }
 
-// GetKey is required by the txscript.KeyDB interface
+// GetKey is required by the txscript.KeyDB interface.
 func (s *secSource) GetKey(addr btcutil.Address) (*btcec.PrivateKey, bool,
 	error) {
 	privKey, ok := s.keys[addr.String()]
@@ -229,7 +229,7 @@ func (s *secSource) GetKey(addr btcutil.Address) (*btcec.PrivateKey, bool,
 	return privKey, true, nil
 }
 
-// GetScript is required by the txscript.ScriptDB interface
+// GetScript is required by the txscript.ScriptDB interface.
 func (s *secSource) GetScript(addr btcutil.Address) ([]byte, error) {
 	script, ok := s.scripts[addr.String()]
 	if !ok {
@@ -249,10 +249,6 @@ func newSecSource(params *chaincfg.Params) *secSource {
 		scripts: make(map[string]*[]byte),
 		params:  params,
 	}
-}
-
-type testLogger struct {
-	t *testing.T
 }
 
 type neutrinoHarness struct {
@@ -305,7 +301,7 @@ var (
 	secSrc                    *secSource
 	addr1, addr2, addr3       btcutil.Address
 	script1, script2, script3 []byte
-	tx1, tx2, tx3             *wire.MsgTx
+	tx1, tx2                  *wire.MsgTx
 	ourOutPoint               wire.OutPoint
 )
 
@@ -316,61 +312,56 @@ func testRescan(harness *neutrinoHarness, t *testing.T) {
 	// this to test rescans and notifications.
 	modParams := harness.svc.ChainParams()
 	secSrc = newSecSource(&modParams)
-	privKey1, err := btcec.NewPrivateKey(btcec.S256())
-	if err != nil {
-		t.Fatalf("Couldn't generate private key: %s", err)
+
+	newPkScript := func() (btcutil.Address, []byte, *wire.TxOut) {
+		t.Helper()
+
+		privKey, err := btcec.NewPrivateKey(btcec.S256())
+		if err != nil {
+			t.Fatalf("Couldn't generate private key: %s", err)
+		}
+		addr, err := secSrc.add(privKey)
+		if err != nil {
+			t.Fatalf("Couldn't create address from key: %s", err)
+		}
+		script, err := secSrc.GetScript(addr)
+		if err != nil {
+			t.Fatalf("Couldn't create script from address: %s", err)
+		}
+		return addr, script, &wire.TxOut{
+			PkScript: script,
+			Value:    1000000000,
+		}
 	}
-	addr1, err = secSrc.add(privKey1)
-	if err != nil {
-		t.Fatalf("Couldn't create address from key: %s", err)
+
+	createTx := func(txOuts ...*wire.TxOut) *wire.MsgTx {
+		t.Helper()
+
+		// Fee rate is satoshis per byte
+		tx, err := harness.h1.CreateTransaction(
+			txOuts, 1000, true,
+		)
+		if err != nil {
+			t.Fatalf("Couldn't create transaction from script: %s", err)
+		}
+		_, err = harness.h1.Node.SendRawTransaction(tx, true)
+		if err != nil {
+			t.Fatalf("Unable to send raw transaction to node: %s", err)
+		}
+		return tx
 	}
-	script1, err = secSrc.GetScript(addr1)
-	if err != nil {
-		t.Fatalf("Couldn't create script from address: %s", err)
-	}
-	out1 := wire.TxOut{
-		PkScript: script1,
-		Value:    1000000000,
-	}
-	// Fee rate is satoshis per byte
-	tx1, err = harness.h1.CreateTransaction(
-		[]*wire.TxOut{&out1}, 1000, true,
-	)
-	if err != nil {
-		t.Fatalf("Couldn't create transaction from script: %s", err)
-	}
-	_, err = harness.h1.Node.SendRawTransaction(tx1, true)
-	if err != nil {
-		t.Fatalf("Unable to send raw transaction to node: %s", err)
-	}
-	privKey2, err := btcec.NewPrivateKey(btcec.S256())
-	if err != nil {
-		t.Fatalf("Couldn't generate private key: %s", err)
-	}
-	addr2, err = secSrc.add(privKey2)
-	if err != nil {
-		t.Fatalf("Couldn't create address from key: %s", err)
-	}
-	script2, err = secSrc.GetScript(addr2)
-	if err != nil {
-		t.Fatalf("Couldn't create script from address: %s", err)
-	}
-	out2 := wire.TxOut{
-		PkScript: script2,
-		Value:    1000000000,
-	}
-	// Fee rate is satoshis per byte
-	tx2, err = harness.h1.CreateTransaction(
-		[]*wire.TxOut{&out2}, 1000, true,
-	)
-	if err != nil {
-		t.Fatalf("Couldn't create transaction from script: %s", err)
-	}
-	_, err = harness.h1.Node.SendRawTransaction(tx2, true)
-	if err != nil {
-		t.Fatalf("Unable to send raw transaction to node: %s", err)
-	}
-	_, err = harness.h1.Node.Generate(1)
+
+	var out1, out2 *wire.TxOut
+
+	// Avoid zero-values with a dummy index at vout 0.
+	_, _, out0 := newPkScript()
+	addr1, script1, out1 = newPkScript()
+	tx1 = createTx(out0, out1)
+
+	addr2, script2, out2 = newPkScript()
+	tx2 = createTx(out2)
+
+	blockHashes, err := harness.h1.Node.Generate(1)
 	if err != nil {
 		t.Fatalf("Couldn't generate/submit block: %s", err)
 	}
@@ -379,21 +370,9 @@ func testRescan(harness *neutrinoHarness, t *testing.T) {
 		t.Fatalf("Couldn't sync ChainService: %s", err)
 	}
 
-	// Call GetUtxo for our output in tx1 to see if it's spent.
-	ourIndex := 1 << 30 // Should work on 32-bit systems
-	for i, txo := range tx1.TxOut {
-		if bytes.Equal(txo.PkScript, script1) {
-			ourIndex = i
-		}
-	}
-	if ourIndex != 1<<30 {
-		ourOutPoint = wire.OutPoint{
-			Hash:  tx1.TxHash(),
-			Index: uint32(ourIndex),
-		}
-	} else {
-		t.Fatalf("Couldn't find the index of our output in transaction"+
-			" %s", tx1.TxHash())
+	ourOutPoint = wire.OutPoint{
+		Hash:  tx1.TxHash(),
+		Index: 1,
 	}
 	spendReport, err := harness.svc.GetUtxo(
 		neutrino.WatchInputs(neutrino.InputWithScript{
@@ -409,7 +388,15 @@ func testRescan(harness *neutrinoHarness, t *testing.T) {
 		t.Fatalf("UTXO's script doesn't match expected script for %s",
 			ourOutPoint)
 	}
-
+	if *spendReport.BlockHash != *blockHashes[0] {
+		t.Fatalf("UTXO's block hash is wrong")
+	}
+	if spendReport.BlockHeight == 0 {
+		t.Fatalf("UTXO's block height field not set")
+	}
+	if spendReport.BlockIndex < 1 || spendReport.BlockIndex > 2 {
+		t.Fatalf("UTXO at unexpeced block index %d", spendReport.BlockIndex)
+	}
 }
 
 func testStartRescan(harness *neutrinoHarness, t *testing.T) {
@@ -1004,7 +991,6 @@ func testRandomBlocks(harness *neutrinoHarness, t *testing.T) {
 	if lastErr != nil {
 		t.Fatal(lastErr)
 	}
-	return
 }
 
 func TestNeutrinoSync(t *testing.T) {
@@ -1116,10 +1102,10 @@ func TestNeutrinoSync(t *testing.T) {
 	db, err := walletdb.Create(
 		"bdb", tempDir+"/weks.db", true, dbOpenTimeout,
 	)
-	defer db.Close()
 	if err != nil {
 		t.Fatalf("Error opening DB: %s\n", err)
 	}
+	defer db.Close()
 	config := neutrino.Config{
 		DataDir:     tempDir,
 		Database:    db,
@@ -1144,9 +1130,10 @@ func TestNeutrinoSync(t *testing.T) {
 	// Create a test harness with the three nodes and the neutrino instance.
 	testHarness := &neutrinoHarness{h1, h2, h3, svc}
 
-	for _, test := range testCases {
-		if ok := t.Run(test.name, func(t *testing.T) {
-			test.test(testHarness, t)
+	for _, testCase := range testCases {
+		testCase := testCase
+		if ok := t.Run(testCase.name, func(t *testing.T) {
+			testCase.test(testHarness, t)
 		}); !ok {
 			break
 		}

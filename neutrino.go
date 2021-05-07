@@ -157,10 +157,7 @@ type ServerPeer struct {
 	connReq        *connmgr.ConnReq
 	server         *ChainService
 	persistent     bool
-	continueHash   *chainhash.Hash
-	requestQueue   []*wire.InvVect
 	knownAddresses map[string]struct{}
-	banScore       connmgr.DynamicBanScore
 	quit           chan struct{}
 
 	// The following map of subcribers is used to subscribe to messages
@@ -205,51 +202,6 @@ func (sp *ServerPeer) newestBlock() (*chainhash.Hash, int32, error) {
 func (sp *ServerPeer) addKnownAddresses(addresses []*wire.NetAddress) {
 	for _, na := range addresses {
 		sp.knownAddresses[addrmgr.NetAddressKey(na)] = struct{}{}
-	}
-}
-
-// addressKnown true if the given address is already known to the peer.
-func (sp *ServerPeer) addressKnown(na *wire.NetAddress) bool {
-	_, exists := sp.knownAddresses[addrmgr.NetAddressKey(na)]
-	return exists
-}
-
-// addBanScore increases the persistent and decaying ban score fields by the
-// values passed as parameters. If the resulting score exceeds half of the ban
-// threshold, a warning is logged including the reason provided. Further, if
-// the score is above the ban threshold, the peer will be banned and
-// disconnected.
-func (sp *ServerPeer) addBanScore(persistent, transient uint32, reason string) {
-	// No warning is logged and no score is calculated if banning is
-	// disabled.
-	warnThreshold := BanThreshold >> 1
-	if transient == 0 && persistent == 0 {
-		// The score is not being increased, but a warning message is
-		// still logged if the score is above the warn threshold.
-		score := sp.banScore.Int()
-		if score > warnThreshold {
-			log.Warnf("Misbehaving peer %s: %s -- ban score is "+
-				"%d, it was not increased this time", sp,
-				reason, score)
-		}
-		return
-	}
-
-	score := sp.banScore.Increase(persistent, transient)
-	if score > warnThreshold {
-		log.Warnf("Misbehaving peer %s: %s -- ban score increased to %d",
-			sp, reason, score)
-
-		if score > BanThreshold {
-			peerAddr := sp.Addr()
-			err := sp.server.BanPeer(
-				peerAddr, banman.ExceededBanThreshold,
-			)
-			if err != nil {
-				log.Errorf("Unable to ban peer %v: %v",
-					peerAddr, err)
-			}
-		}
 	}
 }
 
@@ -385,7 +337,7 @@ func (sp *ServerPeer) OnAddr(_ *peer.Peer, msg *wire.MsgAddr) {
 		return
 	}
 
-	var addrsSupportingServices []*wire.NetAddress
+	addrsSupportingServices := make([]*wire.NetAddress, 0, len(msg.AddrList))
 	for _, na := range msg.AddrList {
 		// Don't add more address if we're disconnecting.
 		if !sp.Connected() {
@@ -533,7 +485,7 @@ type Config struct {
 	DataDir string
 
 	// Database is an *open* database instance that we'll use to storm
-	// indexes of teh chain.
+	// indexes of the chain.
 	Database walletdb.DB
 
 	// ChainParams is the chain that we're running on.
@@ -566,9 +518,20 @@ type Config struct {
 	// hold in memory at most.
 	FilterCacheSize uint64
 
+	// BlockCache is an LRU block cache. If none is provided then the a new
+	// one will be instantiated.
+	BlockCache *lru.Cache
+
 	// BlockCacheSize indicates the size (in bytes) of blocks the block
-	// cache will hold in memory at most.
+	// cache will hold in memory at most. If a BlockCache is provided then
+	// BlockCacheSize is ignored.
 	BlockCacheSize uint64
+
+	// persistToDisk indicates whether the filter should also be written
+	// to disk in addition to the memory cache. For "normal" wallets, they'll
+	// almost never need to re-match a filter once it's been fetched unless
+	// they're doing something like a key import.
+	PersistToDisk bool
 
 	// AssertFilterHeader is an optional field that allows the creator of
 	// the ChainService to ensure that if any chain data exists, it's
@@ -576,6 +539,16 @@ type Config struct {
 	// up and this filter header state has diverged, then it'll remove the
 	// current on disk filter headers to sync them anew.
 	AssertFilterHeader *headerfs.FilterHeader
+
+	// BroadcastTimeout is the amount of time we'll wait before giving up on
+	// a transaction broadcast attempt. Broadcasting transactions consists
+	// of three steps:
+	//
+	// 1. Neutrino sends an inv for the transaction.
+	// 2. The recipient node determines if the inv is known, and if it's
+	//    not, replies with a getdata message.
+	// 3. Neutrino sends the raw transaction.
+	BroadcastTimeout time.Duration
 }
 
 // peerSubscription holds a peer subscription which we'll notify about any
@@ -585,8 +558,8 @@ type peerSubscription struct {
 	cancel <-chan struct{}
 }
 
-// ChainService is instantiated with functional options
-type ChainService struct {
+// ChainService is instantiated with functional options.
+type ChainService struct { // nolint:maligned
 	// The following variables must only be used atomically.
 	// Putting the uint64s first makes them 64-bit aligned for 32-bit systems.
 	bytesReceived uint64 // Total bytes received from all peers since start.
@@ -597,6 +570,7 @@ type ChainService struct {
 	FilterDB         filterdb.FilterDatabase
 	BlockHeaders     headerfs.BlockHeaderStore
 	RegFilterHeaders *headerfs.FilterHeaderStore
+	persistToDisk    bool
 
 	FilterCache *lru.Cache
 	BlockCache  *lru.Cache
@@ -637,12 +611,19 @@ type ChainService struct {
 
 	nameResolver func(string) ([]net.IP, error)
 	dialer       func(net.Addr) (net.Conn, error)
+
+	broadcastTimeout time.Duration
 }
 
 // NewChainService returns a new chain service configured to connect to the
 // bitcoin network type specified by chainParams.  Use start to begin syncing
 // with peers.
 func NewChainService(cfg Config) (*ChainService, error) {
+	// Use the default broadcast timeout if one isn't provided.
+	if cfg.BroadcastTimeout == 0 {
+		cfg.BroadcastTimeout = pushtx.DefaultBroadcastTimeout
+	}
+
 	// First, we'll sort out the methods that we'll use to established
 	// outbound TCP connections, as well as perform any DNS queries.
 	//
@@ -689,6 +670,8 @@ func NewChainService(cfg Config) (*ChainService, error) {
 		userAgentVersion:  UserAgentVersion,
 		nameResolver:      nameResolver,
 		dialer:            dialer,
+		persistToDisk:     cfg.PersistToDisk,
+		broadcastTimeout:  cfg.BroadcastTimeout,
 	}
 	s.workManager = query.New(&query.Config{
 		ConnectedPeers: s.ConnectedPeers,
@@ -716,11 +699,15 @@ func NewChainService(cfg Config) (*ChainService, error) {
 	}
 	s.FilterCache = lru.NewCache(filterCacheSize)
 
-	blockCacheSize := DefaultBlockCacheSize
-	if cfg.BlockCacheSize != 0 {
-		blockCacheSize = cfg.BlockCacheSize
+	if cfg.BlockCache != nil {
+		s.BlockCache = cfg.BlockCache
+	} else {
+		blockCacheSize := DefaultBlockCacheSize
+		if cfg.BlockCacheSize != 0 {
+			blockCacheSize = cfg.BlockCacheSize
+		}
+		s.BlockCache = lru.NewCache(blockCacheSize)
 	}
-	s.BlockCache = lru.NewCache(blockCacheSize)
 
 	s.BlockHeaders, err = headerfs.NewBlockHeaderStore(
 		cfg.DataDir, cfg.Database, &cfg.ChainParams,
@@ -860,9 +847,11 @@ func NewChainService(cfg Config) (*ChainService, error) {
 		BlockFilterMatches: func(ro *rescanOptions,
 			blockHash *chainhash.Hash) (bool, error) {
 
-			return blockFilterMatches(
+			matches, _, err := blockFilterMatches(
 				&RescanChainSource{&s}, ro, blockHash,
 			)
+
+			return matches, err
 		},
 	})
 
@@ -1032,7 +1021,7 @@ func (s *ChainService) IsBanned(addr string) bool {
 	// Log how much time left the peer will remain banned for, if any.
 	if time.Now().Before(banStatus.Expiration) {
 		log.Debugf("Peer %v is banned for another %v", addr,
-			banStatus.Expiration.Sub(time.Now()))
+			time.Until(banStatus.Expiration))
 	}
 
 	return banStatus.Banned
@@ -1536,9 +1525,13 @@ func (s *ChainService) Start() error {
 	s.addrManager.Start()
 	s.blockManager.Start()
 	s.blockSubscriptionMgr.Start()
-	s.workManager.Start()
+	if err := s.workManager.Start(); err != nil {
+		return fmt.Errorf("unable to start work manager: %v", err)
+	}
 
-	s.utxoScanner.Start()
+	if err := s.utxoScanner.Start(); err != nil {
+		return fmt.Errorf("unable to start utxo scanner: %v", err)
+	}
 
 	if err := s.broadcaster.Start(); err != nil {
 		return fmt.Errorf("unable to start transaction broadcaster: %v",
@@ -1563,18 +1556,31 @@ func (s *ChainService) Stop() error {
 		return nil
 	}
 
+	var returnErr error
 	s.connManager.Stop()
 	s.broadcaster.Stop()
-	s.utxoScanner.Stop()
-	s.workManager.Stop()
+	if err := s.utxoScanner.Stop(); err != nil {
+		log.Errorf("error stopping utxo scanner: %v", err)
+		returnErr = err
+	}
+	if err := s.workManager.Stop(); err != nil {
+		log.Errorf("error stopping work manager: %v", err)
+		returnErr = err
+	}
 	s.blockSubscriptionMgr.Stop()
-	s.blockManager.Stop()
-	s.addrManager.Stop()
+	if err := s.blockManager.Stop(); err != nil {
+		log.Errorf("error stopping block manager: %v", err)
+		returnErr = err
+	}
+	if err := s.addrManager.Stop(); err != nil {
+		log.Errorf("error stopping address manager: %v", err)
+		returnErr = err
+	}
 
 	// Signal the remaining goroutines to quit.
 	close(s.quit)
 	s.wg.Wait()
-	return nil
+	return returnErr
 }
 
 // IsCurrent lets the caller know whether the chain service's block manager
