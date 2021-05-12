@@ -1035,7 +1035,6 @@ func (s *ChainService) GetBlock(blockHash chainhash.Hash,
 					return
 				}
 
-
 				// TODO(roasbeef): modify CheckBlockSanity to
 				// also check witness commitment
 
